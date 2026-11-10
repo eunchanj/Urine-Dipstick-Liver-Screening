@@ -1,0 +1,17 @@
+# Only the files named below are kept in the repository
+/*
+!/.gitignore
+!/CITATION.cff
+!/LICENSE
+!/NOTICE
+!/README.md
+!/requirements.txt
+!/notes/
+/notes/*
+!/notes/knhanes_codes.csv
+!/working/
+/working/*
+!/working/*.py
+/working/paths_local*
+!/working/paths_local.example.py
+/working/text_patterns.py

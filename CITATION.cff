@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the paper named in README.md; this file gives the citation details of the code itself."
+type: software
+title: "Urine dipstick results added little to age, sex and body mass index in models predicting elevated aminotransferases in adults: analysis code"
+authors:
+  - family-names: Jang
+    given-names: Eun Chan
+    orcid: "https://orcid.org/0009-0002-4745-0167"
+  - family-names: Song
+    given-names: Pado
+    orcid: "https://orcid.org/0000-0002-8302-6833"
+  - family-names: Kim
+    given-names: Joung Eun
+    orcid: "https://orcid.org/0009-0002-1893-1156"
+  - family-names: Han
+    given-names: Myung Hwa
+    orcid: "https://orcid.org/0000-0002-2335-9492"
+  - family-names: Lee
+    given-names: Kiheon
+    orcid: "https://orcid.org/0000-0002-7139-2342"
+license: MIT
+repository-code: "https://github.com/eunchanj/Urine-Dipstick-Liver-Screening"

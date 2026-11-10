@@ -1,0 +1,14 @@
+role,variable,years,code,meaning,note
+pregnancy,HE_prg,2016-2024,0,no,0. 아니오 (pregnant now; examination item 임신여부)
+pregnancy,HE_prg,2016-2024,1,yes,1. 예
+pregnancy,HE_prg,2016-2024,8,not_applicable,8. 비해당(남자)
+pregnancy,HE_prg,2016-2024,blank,unknown,missing (no examination record; seen 2016-2021 only)
+alcohol,BD1_11,2016-2024,1,none_or_rare,1. 최근 1년간 전혀 마시지 않았다
+alcohol,BD1_11,2016-2024,2,none_or_rare,2. 월 1회 미만
+alcohol,BD1_11,2016-2024,3,monthly,3. 월 1회 정도
+alcohol,BD1_11,2016-2024,4,monthly,4. 월 2-4회
+alcohol,BD1_11,2016-2024,5,weekly,5. 주 2-3회 정도
+alcohol,BD1_11,2016-2024,6,weekly,6. 주 4회 이상
+alcohol,BD1_11,2016-2024,8,none_or_rare,"8. 비해당(문항1-①⑧): never drank (BD1=1) or child (BD1=8), so adults with this code are lifetime non-drinkers"
+alcohol,BD1_11,2016-2024,9,unknown,"9. 모름, 무응답"
+alcohol,BD1_11,2016-2024,blank,unknown,missing (no health interview record; almost none from 2022)
