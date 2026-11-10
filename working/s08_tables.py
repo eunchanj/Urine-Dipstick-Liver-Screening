@@ -112,8 +112,16 @@ def sig(text, digits=3):
 def n_with_pct(n, total, pct_cell=None):
     """'12,345 (12)', '456 (2.9)'; '<10' alone (display.fmt_n_share): the share is the count over the column total,
     rounded once as a percentage that describes people; the pct cell of the aggregate, when given, must agree with the
-    count and total to its two decimals. A total that is itself masked gives the count alone."""
-    return D.fmt_n_share(n, total, pct_cell) if is_int(total) else D.fmt_count(n)
+    count and total to its two decimals. A share at or above 99.95% and below 100%, which at one decimal would read as
+    a whole hundred, is NEAR_WHOLE ('12,345 (>99.9)'; share_note says so). A total that is itself masked gives the count
+    alone."""
+    if not is_int(total):
+        return D.fmt_count(n)
+    shown = D.fmt_n_share(n, total, pct_cell)
+    exact = D.share_pct(n, total) if " (" in shown else None
+    if exact is not None and Decimal("99.95") <= exact < 100:
+        return f"{shown.split(' (', 1)[0]} ({NEAR_WHOLE})"
+    return shown
 
 
 def n_of_total(n, total):
@@ -160,12 +168,18 @@ class Legend:
             self.sentences.append(sentence)
 
 
-NA_TEXT = {"NA": "not available"}       # defined in the Abbreviations line of every table that prints NA
+# NA in the Abbreviations line of a table that prints it, unless a sentence of its legend that opens 'NA:' defines it;
+# a table may give NA a text of its own (abbreviations, na=)
+NA_TEXT = {"NA": "not available"}
+NA_COUNTS_ONLY = "not estimated (counts only)"
 SHARE_NOTE = "A share shown as <0.1 is above 0 and below 0.05%."
+NEAR_WHOLE = ">99.9"         # a share at or above 99.95% and below 100% (n_with_pct)
+NEAR_WHOLE_NOTE = f"A share shown as {NEAR_WHOLE} is below 100% and at or above 99.95%."
 # why a cell shows NA or a legend sentence leaves a count out, one sentence each (the tables that can show them say so
-# in their legends); NA is named only where a cell of the table prints it and the Abbreviations line defines it
-HIDDEN_NOTE = "A count is not shown where, with the totals of the table, it would let a count of 1-9 be worked out."
-HIDDEN_NA_NOTE = ("NA in place of a count: not shown, since with the totals of the table it would let a count of 1-9 "
+# in their legends); NA is named only where a cell of the table prints it and the Abbreviations line, or a legend
+# sentence that opens 'NA:', defines it
+HIDDEN_NOTE = "A count is withheld where, with the totals of the table, it would let a count of 1-9 be worked out."
+HIDDEN_NA_NOTE = ("NA in place of a count: withheld, since with the totals of the table it would let a count of 1-9 "
                   "be worked out.")
 SMALL_STATS_NOTE = "NA in a row of means, medians or quartiles: fewer than 100 values."
 
@@ -175,19 +189,23 @@ def shows_na(rows):
     return any(c == D.NA for r in rows for c in r[1:])
 
 
-def abbreviations(keys, extra=None, rows=()):
+def abbreviations(keys, extra=None, rows=(), na=NA_TEXT["NA"]):
     """'Abbreviations: AUROC, area under ...; CI, confidence interval.' (display.ABBREVIATIONS and `extra`); NA is
-    added when a cell of `rows` shows it."""
+    added, with the text `na`, when a cell of `rows` shows it, and left out with na=None (a legend sentence that opens
+    'NA:' defines it)."""
     texts = dict(D.ABBREVIATIONS)
-    texts.update(NA_TEXT)
+    texts.update({"NA": na} if na else {})
     texts.update(extra or {})
-    keys = sorted(set(keys) | ({"NA"} if shows_na(rows) else set()), key=str.lower)
+    keys = sorted(set(keys) | ({"NA"} if na and shows_na(rows) else set()), key=str.lower)
     return "Abbreviations: " + "; ".join(f"{k}, {texts[k]}" for k in keys) + "."
 
 
 def share_note(rows):
-    """SHARE_NOTE when a cell of `rows` shows a share of '<0.1' (display.fmt_share), else an empty string."""
-    return SHARE_NOTE if any("(<0.1)" in c for r in rows for c in r) else ""
+    """What a share shown as '<0.1' (display.fmt_share) or as NEAR_WHOLE (n_with_pct) means, for the shares that the
+    cells of `rows` show, in one paragraph; an empty string when they show neither."""
+    cells = [c for r in rows for c in r]
+    return " ".join(note for mark, note in (("(<0.1)", SHARE_NOTE), (f"({NEAR_WHOLE})", NEAR_WHOLE_NOTE))
+                    if any(mark in c for c in cells))
 
 
 single = D.single       # the one value that many rows share (n_boot of a table, for example)
@@ -820,8 +838,8 @@ def write_inputs(src, plans, codes):
 
 # ------------------------------------------------------------------------------------------------ Tables S2 and S3
 CODE_INPUTS = D.GRADED + ("ua_nitrite", "ua_pH")
-ADULTS_NA_NOTE = ("NA: not shown, since with the other counts of the survey year it would let a count of 1-9 be "
-                  "worked out.")
+ADULTS_NA_NOTE = ("NA: withheld, since with the other counts of the survey year it would let a count of 1-9 be "
+                  "worked out.")         # it defines NA, so the Abbreviations line leaves NA out
 
 
 def code_order(code):
@@ -880,7 +898,7 @@ def write_knhanes_codes(src):
               "<10) by subtraction. " + sg_text)]
     if shows_na(rows):
         notes.append(ADULTS_NA_NOTE)
-    notes.append(abbreviations(["KNHANES"], rows=rows))
+    notes.append(abbreviations(["KNHANES"], rows=rows, na=None))
     title = "KNHANES urine dipstick codes by survey year"
     return dict(kind="table", id="knhanes_codes", title=title, markdown=table(header, rows, "ll" + "r" * len(years)),
                 notes=notes, sources=[CODING, "cohort_flow.csv"], target="si", order=SI_ORDER["knhanes_codes"])
@@ -949,7 +967,7 @@ def write_alcohol_codes(src):
               "source (the hospital records have no information on pregnancy).")]
     if shows_na(rows):
         notes.append(ADULTS_NA_NOTE)
-    notes.append(abbreviations(["KNHANES"], rows=rows))
+    notes.append(abbreviations(["KNHANES"], rows=rows, na=None))
     title = "KNHANES codes of the frequency of alcohol drinking and of pregnancy, by survey year"
     return dict(kind="table", id="alcohol_codes", title=title, markdown=table(header, rows, "ll" + "r" * len(years)),
                 notes=notes, sources=[CODING], target="si", order=SI_ORDER["alcohol_codes"])
@@ -1073,7 +1091,7 @@ def availability_note(src, legend):
     values = [D.count(src.one(CHECKS, source="DEV", item=f"persons at dev_adult with {g} on the urine day, {d}")["n"])
               for g, d in items]
     hide = hidden_cells(values, adults, "enzyme availability among adults", undetermined_hidden(src, items, values))
-    shown = {it: ("not shown" if i in hide else D.fmt_count(v)) for i, (it, v) in enumerate(zip(items, values))}
+    shown = {it: ("withheld" if i in hide else D.fmt_count(v)) for i, (it, v) in enumerate(zip(items, values))}
     if hide and HIDDEN_NA_NOTE not in legend.sentences:     # a cell printing NA gives the reason already
         legend.add(HIDDEN_NOTE)
     parts = [f"{word}, {shown[(g, days[0])]} and {shown[(g, days[1])]}" for g, word in groups]
@@ -1285,6 +1303,9 @@ def write_ensemble_details(src):
 # ------------------------------------------------------------------------------------------------ Table S9
 LR_MODELS = ("LR_ASB", "LR_ALL")
 COEF_NA_NOTE = "NA: not shown, because fewer than 10 people in the training set had one value of this input."
+# the standard of error of the table: the coefficients have no interval
+COEF_POINT_NOTE = ("Coefficients are point estimates of the penalised fit; no confidence intervals were computed for "
+                   "them.")
 
 
 def write_lr_coefficients(src):
@@ -1318,7 +1339,7 @@ def write_lr_coefficients(src):
               "3, so that negative to trace and trace to 1+ are each an increase of 0.5 and add half the coefficient "
               f"to the log odds), per unit of pH and of specific gravity, per year of age, per 1 {D.BMI_UNIT} of BMI, "
               "and men versus women; the per-unit intercept applies to the uncentred inputs, so that the log odds is "
-              "the intercept plus the sum of each per-unit coefficient times the input.")]
+              f"the intercept plus the sum of each per-unit coefficient times the input. {COEF_POINT_NOTE}")]
     notes += legend.sentences + [abbreviations(["ALT", "AST", "BMI"], rows=rows)]
     title = "Coefficients of the logistic regression comparators"
     return dict(kind="table", id="lr_coefficients", title=title, markdown=table(header, rows), notes=notes,
@@ -1691,7 +1712,7 @@ SUB_LEVELS = {"age_band": list(D.AGE_BAND_LABELS), "sex": list(D.SEX_LABELS), "p
               "drink_group": list(D.DRINK_LABELS)}
 SUB_DROP_NOTE = ("The group of unknown alcohol drinking frequency is shown as counts only (its prevalence, AUROC and "
                  "O:E are NA).")
-SUB_HIDDEN_NOTE = ("NA in place of a count, or a prevalence: not shown, since with the All row it would let a count of "
+SUB_HIDDEN_NOTE = ("NA in place of a count, or a prevalence: withheld, since with the All row it would let a count of "
                    "1-9 in this group of rows be worked out.")
 SUB_FEW_NOTE = "NA in the AUROC and O:E columns: fewer than 10 events or non-events in the subgroup, counts only."
 
@@ -1741,7 +1762,9 @@ def write_subgroups(src):
               "resamples drawn within each subgroup. O:E, observed events divided by the sum of the predicted risks. "
               "KNHANES records ages of 80 years or more as 80. The alcohol drinking groups are those of the survey "
               f"codes in {si('alcohol_codes')}.")]
-    notes += legend.sentences + [abbreviations(["ALT", "AST", "AUROC", "CI", "KNHANES", "O:E"], rows=rows)]
+    # NA marks a group shown as counts only, unless a count or prevalence is withheld too (then the general text)
+    na = NA_TEXT["NA"] if SUB_HIDDEN_NOTE in legend.sentences else NA_COUNTS_ONLY
+    notes += legend.sentences + [abbreviations(["ALT", "AST", "AUROC", "CI", "KNHANES", "O:E"], rows=rows, na=na)]
     title = ("Discrimination and calibration of the ensemble by age group, sex, survey period and frequency of alcohol "
              f"drinking in {D.DATASET_LONG['KN']}")
     return dict(kind="table", id="subgroups", title=title, markdown=table(header, rows), notes=notes,

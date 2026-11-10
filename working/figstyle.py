@@ -2,9 +2,10 @@
 Okabe-Ito colours, no transparency, figure widths of 89 mm (single column) and 183 mm (double column), lower-case bold
 panel letters, and the checks that run before a figure is saved.
 
-Two styles. STYLE, in force from import, is that of the supplementary figures (text of 7-8 pt). MAIN_STYLE is that of
-the main figures: Arial, all visible text at least 7 pt and all lines at least 1 pt at the file's native size, on a
-canvas of MAIN_CANVAS. A figure takes it by being made, drawn and saved inside a block:
+Two styles. STYLE, in force from import, is that of the supplementary figures, with every text at TEXT_PT (7 pt), the
+size of the text of the main figures: all figures of the paper use one type size, the bold panel letters included.
+MAIN_STYLE is that of the main figures: Arial, all visible text at least 7 pt and all lines at least 1 pt at the file's
+native size, on a canvas of MAIN_CANVAS. A figure takes it by being made, drawn and saved inside a block:
     with F.main_style("flow"):           # or F.style_for(target, canvas), for a builder with a supplementary twin
         fig = F.new_figure(183, 200, layout=None)
         ...
@@ -73,10 +74,12 @@ def _font():
 
 
 FONT = _font()
+TEXT_PT = 7.0                # the one type size of every figure: titles, axis labels, ticks, keys, panel letters
 STYLE = {
-    "font.family": "sans-serif", "font.sans-serif": [FONT, "DejaVu Sans"], "font.size": 8,
-    "axes.titlesize": 8, "axes.titlelocation": "left", "axes.labelsize": 8, "xtick.labelsize": 7,
-    "ytick.labelsize": 7, "legend.fontsize": 7, "legend.title_fontsize": 7, "figure.titlesize": 9,
+    "font.family": "sans-serif", "font.sans-serif": [FONT, "DejaVu Sans"], "font.size": TEXT_PT,
+    "axes.titlesize": TEXT_PT, "axes.titlelocation": "left", "axes.labelsize": TEXT_PT, "xtick.labelsize": TEXT_PT,
+    "ytick.labelsize": TEXT_PT, "legend.fontsize": TEXT_PT, "legend.title_fontsize": TEXT_PT,
+    "figure.titlesize": TEXT_PT,
     "text.color": BLACK, "axes.labelcolor": BLACK, "axes.titlecolor": BLACK, "axes.edgecolor": BLACK,
     "xtick.color": BLACK, "ytick.color": BLACK, "xtick.labelcolor": BLACK, "ytick.labelcolor": BLACK,
     "legend.labelcolor": BLACK, "legend.edgecolor": BLACK, "legend.facecolor": "white", "legend.framealpha": 1.0,
@@ -103,8 +106,8 @@ apply()
 
 # the main figures: one sans-serif font and these sizes at the file's native size; lines of at least 1 pt
 MAIN_FONT = "Arial"
-MAIN_TEXT_PT, MAIN_LINE_PT = 7.0, 1.0
-PANEL_LETTER_PT, PANEL_GAP_PT = 8.0, 4.0        # the bold panel letter: size, and its distance from the axes
+MAIN_TEXT_PT, MAIN_LINE_PT = TEXT_PT, 1.0
+PANEL_LETTER_PT, PANEL_GAP_PT = TEXT_PT, 4.0    # the bold panel letter: the size of the other text; its gap to the axes
 # the largest (width, height) in mm: 'panel' for the figures of panels, 'flow' for the flow diagram
 MAIN_CANVAS = {"panel": (DOUBLE_MM, MAX_HEIGHT_MM), "flow": (DOUBLE_MM, MAX_HEIGHT_MM)}
 MAIN_STYLE = {
@@ -181,9 +184,9 @@ def subplots(nrows=1, ncols=1, width="single", height_mm=60.0, layout="constrain
 
 
 def panel_title(ax, panel, title=""):
-    """Label a panel: its lower-case bold letter (display.panel_label, from its position or letter) at the top left-hand
-    corner, just outside the axes on the line of the title, and `title`, when given, as the left-aligned axes title.
-    Returns the Text of the letter."""
+    """Label a panel: its lower-case bold letter (display.panel_label, from its position or letter; PANEL_LETTER_PT, the
+    size of the other text) at the top left-hand corner, just outside the axes on the line of the title, and `title`,
+    when given, as the left-aligned axes title. Returns the Text of the letter."""
     if title:
         ax.set_title(title, loc="left")
     return ax.annotate(D.panel_label(panel), xy=(0, 1), xycoords="axes fraction",

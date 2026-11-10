@@ -10,17 +10,19 @@ Reads (outputs of s08 and s09, through display.read_index and plain reads of the
   OUT_ROOT/supplement/figures/figures_index.csv, its <id>.md legend fragments, and whether the <id>.pdf, .png, .eps
   and .tif files it lists exist and are not empty (the images themselves are not opened)
 Writes (both removed first, so that a run that stops leaves no out-of-date output)
-  OUT_ROOT/supplement/Supplementary_Information.md: a title line, the contents by purpose (where the sections are, then
-  one line per group of GROUPS, with the short topics of its tables and figures), then
-    1 Methods details        headings with [[TEXT: ...]] placeholders for the methods text
-    2 Supplementary tables   the table fragments, in TABLES order, as s08 wrote them
-    3 Supplementary figures  for each figure in FIGURES order its PNG (figures/<id>.png, empty alternative text so
+  OUT_ROOT/supplement/Supplementary_Information.md: a title line, the contents by purpose (what the file holds, then
+  one line per group of GROUPS, with the short topics of its tables and figures, then the abbreviations), then
+    Supplementary Methods    subsection headings with [[TEXT: ...]] placeholders for the methods text
+    Supplementary Tables     the table fragments, in TABLES order, as s08 wrote them
+    Supplementary Figures    for each figure in FIGURES order its PNG (figures/<id>.png, empty alternative text so
                              that pandoc adds no second caption), then its legend fragment as s09 wrote it
-  Sections are numbered without the S of the table and figure labels (1, 1.4, 2), so that no number names both a
-  section and a table or figure.
-  OUT_ROOT/supplement/supplement_index.csv: one row per section, table and figure, in document order, columns
-    number   '1' or '1.4' for sections; 'Supplementary Table S3' and 'Supplementary Figure S3' for tables and figures
-    kind     section, table or figure
+  Only the tables and figures are numbered: the sections and the subsections of the Supplementary Methods are not, and
+  the text cites a subsection by its title ('Supplementary Methods, Outcomes').
+  OUT_ROOT/supplement/supplement_index.csv: one row per section, subsection, table and figure, in document order,
+  columns
+    number   the label as the text cites it: 'Supplementary Tables' for a section, 'Supplementary Methods, Outcomes'
+             for a subsection, 'Supplementary Table S3' and 'Supplementary Figure S3' for tables and figures
+    kind     section, subsection, table or figure
     id       section key or fragment id
     title    heading, or caption title without the label
     sources  aggregate tables the numbers come from (';'-separated, as in the fragment index; blank for sections)
@@ -34,8 +36,8 @@ without a fragment becomes a [[MISSING: ...]] placeholder that keeps its number.
 
 Tokens, resolved in the text of this script and in the fragments: {{table:<id>}} -> 'Supplementary Table S3',
 {{figure:<id>}} -> 'Supplementary Figure S2' (a panel letter follows the token: {{figure:<id>}}a -> 'Supplementary
-Figure S2a'), {{section:<key>}} -> 'section 1.4' (cited elsewhere as 'section 1.4 of the Supplementary Information').
-A token that does not resolve stops the script.
+Figure S2a'), {{fig:<id>}} -> 'Supplementary Fig. S2' (the form inside a sentence), {{section:<key>}} -> the label of
+the section or subsection ('Supplementary Methods, Outcomes'). A token that does not resolve stops the script.
 
 Checks of the assembled text (each problem is listed with its place; any problem stops the script):
   words        the word lists of text_patterns.py, through display.word_hits; a number that a list names counts as
@@ -48,7 +50,7 @@ Checks of the assembled text (each problem is listed with its place; any problem
   citations    no supplementary item cited without the word 'Supplementary', and no other name for the supplement
   placeholders no unresolved token, and no [[...]] other than the TEXT and MISSING placeholders
   values       no 'nan', and no table cell that shows a count of 1-9 with its percentage
-  layout       sections, subsections and the table and figure captions numbered in order, once each
+  layout       the sections and subsections in order, and the table and figure captions numbered in order, once each
 """
 import aggregate_guard  # noqa: F401  (first statement: refuses individual-level files, records the files opened)
 
@@ -109,7 +111,8 @@ BOTH_OUTCOMES = {"table": ("enzyme_availability", "bmi_availability", "enzyme_cr
                            "sensitivity_analyses", "enzyme_by_year"),
                  "figure": ("decision_curves", "prediction_distributions", "shap_summary", "shap_levels")}
 NO_OUTCOME = {"table": ("inputs", "knhanes_codes", "alcohol_codes", "bmi_source")}
-# section 1: (key, heading, what the paragraph should describe).
+# the subsections of the Supplementary Methods, in order and without numbers: (key, title, what the paragraph should
+# describe).
 METHODS = (
     ("development", "Development data",
      "Describe the hospital records, the study period, the choice of the index urinalysis and of the same-day blood "
@@ -191,11 +194,11 @@ METHODS = (
      "Describe how counts of 1-9 are shown and how sparse levels are pooled for display."),
     ("software", "Software", "Give the software and package versions."),
 )
-# sections 2 and 3: (fragment id, topic). The topic stands in the contents by purpose (GROUPS, which give its context)
-# and names a missing fragment in messages and placeholders; a present fragment is shown with the title of its index
-# row. One id per table or figure; add ids here when s08 or s09 split a topic into several tables or figures, in the
-# order they should be numbered. The ids and numbers are those of s08_tables.SI_ORDER and s09_figures.SI_ORDER (each
-# fragment must carry its number).
+# the Supplementary Tables and Figures: (fragment id, topic). The topic stands in the contents by purpose (GROUPS,
+# which give its context) and names a missing fragment in messages and placeholders; a present fragment is shown with
+# the title of its index row. One id per table or figure; add ids here when s08 or s09 split a topic into several
+# tables or figures, in the order they should be numbered. The ids and numbers are those of s08_tables.SI_ORDER and
+# s09_figures.SI_ORDER (each fragment must carry its number).
 TABLES = (
     ("inputs", "Inputs and their coding"),
     ("knhanes_codes", "KNHANES dipstick codes by survey year"),
@@ -218,19 +221,25 @@ FIGURES = (
     ("shap_summary", "Mean absolute SHAP values of the inputs"),
     ("shap_levels", "Mean SHAP values at each level of the inputs"),
 )
-# the sections in order: (key, heading, kind of the entries, entries)
+# the sections in order, each named for the kind of material it holds and none numbered: (key, heading, kind of the
+# entries, entries). The reporting checklists, made apart from this script, follow them as a Supplementary Note.
 STRUCTURE = (
-    ("methods", "Methods details", "text", METHODS),
-    ("tables", "Supplementary tables", "table", TABLES),
-    ("figures", "Supplementary figures", "figure", FIGURES),
+    ("methods", "Supplementary Methods", "text", METHODS),
+    ("tables", "Supplementary Tables", "table", TABLES),
+    ("figures", "Supplementary Figures", "figure", FIGURES),
 )
 HEAD = f"# {DOC_TITLE}\n\n{DOC_TITLE} for: " + text_placeholder("title of the article")
-# the contents at the head of the supplement, a short map by purpose: where the sections are, then one line per group,
-# as (group, its tables, its figures). Every table and figure has one group, in the order of its number; the full
-# titles are in the document and in supplement_index.csv.
-CONTENTS_LEAD = (f"The methods details are in {ref('section', 'methods')}, the tables in {ref('section', 'tables')} "
-                 f"and the figures in {ref('section', 'figures')}. The TRIPOD+AI and TRIPOD+AI for Abstracts "
-                 f"checklists are in section {len(STRUCTURE) + 1}. By purpose:")
+# the contents at the head of the supplement, a short map by purpose: what the file holds, in order, then one line per
+# group, as (group, its tables, its figures), then the abbreviations of the contents spelt out. Every table and figure
+# has one group, in the order of its number; the full titles are in the document and in supplement_index.csv.
+CONTENTS_LEAD = (f"The {STRUCTURE[0][1]} come first, followed by Supplementary Tables S1-S{len(TABLES)}, "
+                 f"Supplementary Figs. S1-S{len(FIGURES)} and a Supplementary Note with the TRIPOD+AI and TRIPOD+AI "
+                 "for Abstracts checklists. By purpose:")
+# TRIPOD+AI stands only here, in the contents: display.ABBREVIATIONS, which the tables and figures use, does not hold it
+CONTENTS_ABBREVIATIONS = tuple((k, D.ABBREVIATIONS[k]) for k in ("ALT", "AST", "BMI", "KNHANES", "SHAP")) + (
+    ("TRIPOD+AI", "Transparent Reporting of a multivariable prediction model for Individual Prognosis Or Diagnosis, "
+                  "updated for regression and machine learning methods"),)
+CONTENTS_TAIL = "Abbreviations: " + "; ".join(f"{k}, {v}" for k, v in CONTENTS_ABBREVIATIONS) + "."
 GROUPS = (
     ("Inputs and models", ("inputs", "knhanes_codes", "alcohol_codes", "ensemble_details", "lr_coefficients"),
      ("shap_summary", "shap_levels")),
@@ -244,12 +253,13 @@ GROUPS = (
 # table cell of numbers); the patterns below are this script's own checks.
 SMALL_COUNT = re.compile(r"[1-9] \(\d+(?:\.\d+)?\)")        # a count of 1-9 with its percentage
 NAN = re.compile(r"(?i)\bnan\b")
-TOKEN = re.compile(r"\{\{(table|figure|section):([a-z][a-z0-9_]*)\}\}")
+TOKEN = re.compile(r"\{\{(table|figure|fig|section):([a-z][a-z0-9_]*)\}\}")
+ITEM_KIND = {"fig": "figure"}       # the token of the short form names a figure
 BRACES = re.compile(r"\{\{|\}\}")
 PLACEHOLDER = re.compile(r"\[\[(TEXT|MISSING): (?:(?!\[\[|\]\]).)+\]\]")     # single brackets may stand inside
 PIPE = re.compile(r"(?<!\\)\|")
 # a supplementary item cited without the word 'Supplementary', or another name for the supplement
-OTHER_CITATION = re.compile(r"(?<!Supplementary )\b(?:Table|Figure)s? S\d+|\bData S\d+\b|"
+OTHER_CITATION = re.compile(r"(?<!Supplementary )\b(?:(?:Table|Figure)s?|Figs?\.) S\d+|\bData S\d+\b|"
                             r"(?i:\bsupporting information\b)")
 
 
@@ -268,19 +278,26 @@ def _require(condition, message):
 
 # ------------------------------------------------------------------------------------------------ numbering
 def numbering(structure=None):
-    """Numbers of the supplement: ({(kind, id): n} for tables and figures, {section key: '1' or '1.4'} in document
-    order). Sections carry no S, so that their numbers differ from the labels of the tables and figures
-    (Supplementary Table S1)."""
+    """Numbers and labels of the supplement: ({(kind, id): n} for tables and figures, {section key: label} in document
+    order). Only the tables and figures are numbered (Supplementary Table S1); a section is cited by its heading
+    ('Supplementary Tables') and a subsection of the Supplementary Methods by that heading and its title
+    ('Supplementary Methods, Outcomes')."""
     structure = STRUCTURE if structure is None else structure
     numbers, sections = {}, {}
-    for i, (key, _heading, kind, items) in enumerate(structure, 1):
-        sections[key] = str(i)
+    for key, heading, kind, items in structure:
+        sections[key] = heading
         for j, item in enumerate(items, 1):
             if kind == "text":
-                sections[item[0]] = f"{i}.{j}"
+                sections[item[0]] = f"{heading}, {item[1]}"
             else:
                 numbers[(kind, item[0])] = j
     return numbers, sections
+
+
+def short_label(n):
+    """The label of a supplementary figure inside a sentence, where 'Figure' is abbreviated: 'Supplementary Fig.
+    S2'."""
+    return D.label("figure", "si", n).replace("Figure", "Fig.", 1)
 
 
 def check_structure(structure=None, head=None, groups=None):
@@ -312,11 +329,11 @@ def check_structure(structure=None, head=None, groups=None):
             got = [numbers[(kind, fid)] for fid in group[j] if (kind, fid) in numbers]
             if got != sorted(got):
                 problems.append(f"group {group[0]!r}: its {kind}s are not in the order of their numbers")
-    texts = ([("title", head), (CONTENTS_HEADING, CONTENTS_LEAD)]
+    texts = ([("title", head), (CONTENTS_HEADING, CONTENTS_LEAD), (CONTENTS_HEADING, CONTENTS_TAIL)]
              + [(item[0], item[2]) for s in structure if s[2] == "text" for item in s[3]])
     for where, text in texts:
         for kind, key in TOKEN.findall(text):
-            if (key not in sections) if kind == "section" else ((kind, key) not in numbers):
+            if (key not in sections) if kind == "section" else ((ITEM_KIND.get(kind, kind), key) not in numbers):
                 problems.append(f"{where}: token {ref(kind, key)} names nothing in STRUCTURE")
         if BRACES.search(TOKEN.sub("", text)):
             problems.append(f"{where}: braces that are not a token")
@@ -432,20 +449,22 @@ class Doc:
     supplement_index.csv and the topics of the contents by purpose."""
 
     def __init__(self, structure=None):
+        structure = STRUCTURE if structure is None else structure
         self.numbers, self.sections = numbering(structure)
+        self.tops = [s[0] for s in structure]
         self._sections_left = list(self.sections)
         self._left = {k: [fid for (kk, fid) in self.numbers if kk == k] for k in KINDS}
         self.parts, self.rows, self.topics = [], [], {}
 
     def heading(self, key, title):
-        """Heading of the next section ('## 2 Supplementary tables') or subsection ('### 1.4 Outcomes')."""
+        """Heading of the next section ('## Supplementary Tables') or subsection of the Supplementary Methods
+        ('### Outcomes'), without a number."""
         _require(self._sections_left and self._sections_left[0] == key,
                  f"heading {key!r} is not the next section of STRUCTURE")
         self._sections_left.pop(0)
-        number = self.sections[key]
-        level = 3 if "." in number else 2
-        self.parts.append((f"{number} {title}", f"{'#' * level} {number} {title}"))
-        self.rows.append([number, "section", key, title, ""])
+        level = 2 if key in self.tops else 3
+        self.parts.append((self.sections[key], f"{'#' * level} {title}"))
+        self.rows.append([self.sections[key], "section" if level == 2 else "subsection", key, title, ""])
 
     def paragraph(self, place, text):
         self.parts.append((place, text))
@@ -469,24 +488,27 @@ class Doc:
         self.rows.append([label, kind, fid, title, sources])
 
     def resolve(self, text):
-        """Tokens replaced by their labels ('Supplementary Table S3', 'Supplementary Figure S2', 'section 1.4'); a token
-        that names nothing stays (and fails the checks)."""
+        """Tokens replaced by their labels ('Supplementary Table S3', 'Supplementary Figure S2', 'Supplementary Fig.
+        S2', 'Supplementary Methods, Outcomes'); a token that names nothing stays (and fails the checks)."""
         def label(m):
             kind, key = m.groups()
             if kind == "section":
-                return f"section {self.sections[key]}" if key in self.sections else m.group(0)
-            n = self.numbers.get((kind, key))
-            return m.group(0) if n is None else D.label(kind, "si", n)
+                return self.sections.get(key, m.group(0))
+            n = self.numbers.get((ITEM_KIND.get(kind, kind), key))
+            if n is None:
+                return m.group(0)
+            return short_label(n) if kind == "fig" else D.label(kind, "si", n)
         return TOKEN.sub(label, text)
 
     def contents(self):
-        """The contents by purpose: where the sections are, then one line per group with the topics of its items."""
+        """The contents by purpose: what the file holds, then one line per group with the topics of its items (a
+        figure in the short form, since it stands inside the line), then the abbreviations."""
         lines = [f"## {CONTENTS_HEADING}", "", CONTENTS_LEAD, ""]
         for group, tables, figures in GROUPS:
             items = [(kind, fid) for kind, ids in zip(KINDS, (tables, figures)) for fid in ids]
-            lines.append(f"- **{group}:** "
-                         + "; ".join(f"{ref(k, f)}, {lc(self.topics[(k, f)])}" for k, f in items) + ".")
-        return "\n".join(lines)
+            lines.append(f"- **{group}:** " + "; ".join(
+                f"{ref('fig' if k == 'figure' else k, f)}, {lc(self.topics[(k, f)])}" for k, f in items) + ".")
+        return "\n".join(lines + ["", CONTENTS_TAIL])
 
     def render(self, head):
         """[(place, markdown)] of the whole document in order, tokens resolved."""
@@ -505,7 +527,7 @@ def build(found, structure=None):
             if kind == "text":
                 sub, title, what = item
                 doc.heading(sub, title)
-                doc.paragraph(f"{doc.sections[sub]} {title}", text_placeholder(what))
+                doc.paragraph(doc.sections[sub], text_placeholder(what))
             else:
                 fid, topic = item
                 doc.place(kind, fid, found[kind].get(fid), topic)
@@ -546,13 +568,13 @@ def check_part(place, text):
 
 def check_layout(text, structure=None):
     """Problems of the order of headings and captions in the assembled text."""
-    numbers, sections = numbering(structure)
+    structure = STRUCTURE if structure is None else structure
+    numbers, _sections = numbering(structure)
     problems = []
     heads = re.findall(r"(?m)^(#+) (.*)$", text)
     want = [("#", DOC_TITLE), ("##", CONTENTS_HEADING)]
-    titles = {**{s[0]: s[1] for s in (structure or STRUCTURE)},
-              **{item[0]: item[1] for s in (structure or STRUCTURE) if s[2] == "text" for item in s[3]}}
-    want += [("###" if "." in n else "##", f"{n} {titles[k]}") for k, n in sections.items()]
+    for _key, heading, kind, items in structure:
+        want += [("##", heading)] + ([("###", item[1]) for item in items] if kind == "text" else [])
     if heads != want:
         problems.append("headings are not the title, the contents and the sections of STRUCTURE in order (a fragment "
                         "may hold a heading)")

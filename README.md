@@ -63,7 +63,7 @@ The other files in `working/` hold shared code:
 
 In `cohort.py` and `s00_env_check.py`, the word "atlas" refers to the three derived hospital tables `LAB_DAY`, `DIPSTICK_EPISODE` and `ANTHRO_DAY`.
 
-The scripts that build the manuscript files are not part of this repository, so `s10_supplement.py` puts `[[TEXT: ...]]` placeholders where the methods text of the supplement would go, and the reporting checklists that its contents line places in a fourth section are not made here.
+The scripts that build the manuscript files are not part of this repository, so `s10_supplement.py` puts `[[TEXT: ...]]` placeholders where the methods text of the supplement would go, and the reporting checklists that its contents line places in a Supplementary Note are not made here.
 
 This copy of the code was edited for readers after the analysis had been run. Comments and messages were edited, one internal name became `ROOT`, the model folder must now be named `models`, `s00_env_check.py` lists the versions of the packages of `requirements.txt` and writes one row fewer to `data_checks.csv`, and `aggregate_guard.py` knows only the output folders of these scripts. Everything else is the code that was run.
 
@@ -104,7 +104,7 @@ The analysis used a NumPy built on OpenBLAS. A NumPy built on another linear alg
 
 The Korea Disease Control and Prevention Agency provides the KNHANES files after registration at https://knhanes.kdca.go.kr.
 
-The hospital records cannot be made public: Korea's Personal Information Protection Act and the hospital's own rules prevent it. Requests for access go to the corresponding author of the paper, and any release needs institutional approval.
+The hospital records cannot be made public: Korea's Personal Information Protection Act and the hospital's own rules prevent it. Requests for access go to the corresponding author of the paper, and any release needs institutional approval and a data use agreement with the hospital.
 
 The corresponding author shares the fitted ALT and AST model files on reasonable request. A model file loads with joblib under the package versions above. An ensemble (`ens_ALT.joblib`, `ens_AST.joblib`) takes a table with the columns of `INPUTS` in `cohort.py`, in that order and with that coding; a regression (`lr_<regression>_<outcome>.joblib`) takes the columns of `LR_INPUTS` for its model.
 
@@ -218,7 +218,7 @@ The code is released under the MIT licence (`LICENSE`); see also the patent noti
 
 ## Funding
 
-This research was supported by the Korea Health Technology R&D Project through the Korea Health Industry Development Institute, funded by the Ministry of Health and Welfare, Republic of Korea (grant number RS-2025-02307233), and by the Doctoral Student Research Grant Program through the National Research Foundation of Korea, funded by the Ministry of Education (grant number RS-2025-25400035).
+This research was supported by the Korea Health Technology R&D Project through the Korea Health Industry Development Institute, funded by the Ministry of Health and Welfare, Republic of Korea (grant number RS-2025-02307233). This work was supported by the Laboratory Specialized Startup Leading University Program funded by the Ministry of Education (National Research Foundation of Korea) and the Ministry of Science and ICT (Commercialization Promotion Agency for R&D Outcomes), Republic of Korea (NTIS: 2710101030).
 
 ## Generative artificial intelligence
 

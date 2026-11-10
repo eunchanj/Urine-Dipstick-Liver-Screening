@@ -98,6 +98,12 @@ def figure_ref(fig_id, target):
     return D.label("figure", target, order_of(fig_id, target))
 
 
+def figure_cite(fig_id, target):
+    """A figure cited inside a sentence, where Figure is abbreviated: 'Fig. 2', 'Supplementary Fig. S1' (the label
+    that opens a legend keeps 'Figure')."""
+    return figure_ref(fig_id, target).replace("Figure", "Fig.", 1)
+
+
 def table_ref(table_id):
     """'Table 3', 'Supplementary Table S12'."""
     target, number = S08_TABLES[table_id]
@@ -962,8 +968,7 @@ def figure_flow(store):
     if model["folded"]:
         notes.append("Where a step removed fewer than 10 people, it is shown with the next step and one count covers "
                      "both.")
-    notes.append(f"Shaded boxes are the analysis populations: the training set, the test set and "
-                 f"{D.DATASET_LONG['KN']}.")
+    notes.append(f"The analysis populations are the training set, the test set and {D.DATASET_LONG['KN']}.")
     notes.append(D.abbreviation_note("ALT", "AST", "BMI", "KNHANES"))
     with F.main_style("flow"):
         fig = draw_flow(model)
@@ -982,8 +987,8 @@ HATCH = "//////"
 # shown bands also in grey scale, since no bar has an outline there and hatching of 1 pt would fill such a narrow bar
 MASKED_BAR = {"si": dict(facecolor="#FFFFFF", edgecolor=F.GREY, linewidth=0.3, hatch=HATCH),
               "main": dict(facecolor="#404040", edgecolor="none", linewidth=0)}
-MASKED_NOTE = {"si": "Hatched bars mark bands with 1-9 people, whose count is not shown.",
-               "main": "Dark grey bars mark bands with 1-9 people, whose count is not shown."}
+# what a legend says of the bands of 1-9 people (the key of the figure shows their bar)
+MASKED_TEXT = "counts of 1-9 people are masked"
 
 
 def point_style(strategy):
@@ -1275,10 +1280,14 @@ def figure_roc_calibration(store, outcome):
 
 
 def roc_calibration_text(store, outcome, missing_points, missing_bins, width, masked_any):
-    """Title, legend and notes of Figure 2 or 3 (panels as in figure_roc_calibration)."""
+    """Title, legend and notes of Figure 2 or 3 (panels as in figure_roc_calibration): the data set of each column of
+    panels, then what each pair of panels shows."""
     label = D.OUTCOME_LABELS[outcome]
     long_kn = D.DATASET_LONG["KN"]
     roc_panels, cal_panels = [D.legend_panel(j) for j in (0, 1)], [D.legend_panel(j) for j in (2, 3)]
+    # the two panels of each data set: its ROC panel above its calibration panel (one column per data set)
+    column = {d: f"{roc_panels[j]}, {cal_panels[j]}" for j, d in enumerate(ROC_DATASETS)}
+    point_panel = roc_panels[ROC_DATASETS.index(POINT_DATASET)]      # the panel with the rule points
     # one number of resamples for every CI of the figure: the calibration rows and the AUROC rows of the curves
     boot = [D.one(store(t), outcome=outcome, dataset=d, model="ENS")["n_boot"]
             for t in ("calibration.csv", "performance.csv") for d in ROC_DATASETS]
@@ -1289,26 +1298,23 @@ def roc_calibration_text(store, outcome, missing_points, missing_bins, width, ma
     # the people only, with the totals that display.panel_heights checks each histogram panel against (see the top of
     # this file for the events)
     sizes = {d: D.one(store("performance.csv"), outcome=outcome, dataset=d, model="ENS")["n"] for d in ROC_DATASETS}
-    thresholds = ("set in the development test set to flag the proportion of people nearest to that flagged by the "
-                  "rule there (ties to the larger threshold) and applied unchanged to KNHANES, where the ensemble and "
-                  f"the rule can flag different proportions ({table_ref(COMPARATOR_TABLE[outcome])})")
-    # the risks drawn are the ensemble's own; no recalibration or other updating was done in KNHANES
+    # the marks and lines are named by the key of the figure; the legend keeps the diagonal of the ROC panels, whose
+    # line the key names only as perfect calibration. The way the thresholds were set is in the Methods and Table 3.
+    # The risks drawn are the ensemble's own; no recalibration or other updating was done in KNHANES
+    masked = f"; {MASKED_TEXT}" if masked_any else ""
     legend = (
-        f"Sample: development test set, {people_text(sizes['DEV_TEST'])}; {long_kn}, {people_text(sizes['KN'])}; "
-        f"{events_pointer((outcome,))}. {', '.join(roc_panels)} Receiver operating characteristic curves of the "
-        "ensemble and two logistic regression models, with the AUROC (95% CI) of each model; the dashed diagonal shows "
-        f"no discrimination (AUROC 0.5). In {roc_panels[1]}, the filled square shows the rule "
-        f"({D.RULE_LONG['BMI25']}) and the open square the ensemble at the threshold {thresholds}. "
-        f"{', '.join(cal_panels)} Calibration of the ensemble: observed proportion with the outcome against mean "
-        "predicted risk by decile of predicted risk (deciles with tied limits merged), with Wilson 95% CIs as error "
-        "bars; the dashed line shows perfect calibration. In KNHANES, the ensemble's predicted risks are used as they "
-        f"stand, without recalibration. O:E and the calibration slope are given with percentile bootstrap 95% CIs "
-        f"({n_boot} resamples). Below each calibration plot, the number of people in each {D.fmt(width * 100, 0)}% "
-        "band of predicted risk (log scale; bar heights rounded to 2 significant figures). Models as in "
+        f"{column['DEV_TEST']} {D.DATASET_LABELS['DEV_TEST']} ({people_text(sizes['DEV_TEST'])}); {column['KN']} "
+        f"{long_kn} ({people_text(sizes['KN'])}); {events_pointer((outcome,))}. {', '.join(roc_panels)} Receiver "
+        "operating characteristic curves of the ensemble and two logistic regression models, with the AUROC (95% CI) "
+        f"of each model; the diagonal shows no discrimination (AUROC 0.5); {point_panel} also marks the rule "
+        f"({D.RULE_LONG['BMI25']}) and the ensemble at its threshold set by the rule "
+        f"({table_ref(COMPARATOR_TABLE[outcome])}). {', '.join(cal_panels)} Calibration of the ensemble: observed "
+        "proportion with the outcome against mean predicted risk by decile of predicted risk, with Wilson 95% CIs as "
+        f"error bars; O:E and the calibration slope with percentile bootstrap 95% CIs ({n_boot} resamples); in KNHANES "
+        "the predicted risks are used without recalibration. Below each calibration plot, the number of people in each "
+        f"{D.fmt(width * 100, 0)}% band of predicted risk (log scale){masked}. Models as in "
         f"{performance_ref((outcome,))}.")
     notes = []
-    if masked_any:
-        notes.append(MASKED_NOTE["main"])
     if missing_points:
         what = "; ".join(f"{lower_first(D.STRATEGY_LABELS[s])} {D.legend_panel(panel)}" for panel, s in missing_points)
         notes.append("Not shown because a cell of its two-by-two table of alerts and outcomes held 1-9 people: "
@@ -1496,7 +1502,7 @@ def figure_subgroups(store):
         legend = (
             f"{D.legend_panel(0)} {D.OUTCOME_LABELS['ALT']}; {D.legend_panel(1)} {D.OUTCOME_LABELS['AST']}. The two "
             "panels show the same groups in the same order on one AUROC axis. Values are the AUROC (95% CI); error "
-            f"bars are the 95% CIs. The diamond and the dotted line show the whole sample (row '{overall}'); n is the "
+            f"bars are the 95% CIs. Row '{overall}' gives the whole sample; n is the "
             f"number of people in the group and events the number with the outcome. 95% CIs are from {n_boot} "
             "bootstrap resamples drawn within each group (percentile method). KNHANES records ages of 80 years or more "
             "as 80. People with an unknown frequency of alcohol drinking are not drawn; their number is in "
@@ -1515,10 +1521,10 @@ def figure_subgroups(store):
 # ================================================================================================ decision curves
 DCA_DATASETS = ("KN", "DEV_TEST")
 DCA_H = 156                  # height (mm) of the figure
-# Two rows of panels per population, so that no panel holds more than three bands at 183 mm: the models (the ensemble
-# and 12-input logistic regression curves, alert at p >= pt, with their bands, and the three fixed ensemble alerts as
-# lines), then the ensemble with the logistic regression on age, sex and BMI and the rule (bands); testing everyone and
-# no one in both. Columns: the outcomes in display.OUTCOMES order (ALT, AST).
+# Two rows of panels per population, so that no panel holds more than three bands at 183 mm: the models (the curves of
+# the ensemble and of the logistic regression with all 12 inputs, alert at p >= pt, with their bands, and the three
+# fixed ensemble alerts as lines), then the ensemble with the logistic regression with age, sex and BMI and the rule
+# (bands); alerting everyone and alerting no one in both. Columns: the outcomes in display.OUTCOMES order (ALT, AST).
 DCA_ROWS = (("nb_ens", "nb_lr_all", "nb_ens_youden", "nb_ens_sens80", "nb_ens_sens90", "nb_all", "nb_none"),
             ("nb_ens", "nb_lr_asb", "nb_rule_bmi25", "nb_all", "nb_none"))
 DCA_LINES = {
@@ -1550,20 +1556,20 @@ DCA_LABELS = {
     "nb_ens_sens80": f"Ensemble, {lower_first(D.THRESHOLD_LABELS['SENS80'])}",
     "nb_ens_sens90": f"Ensemble, {lower_first(D.THRESHOLD_LABELS['SENS90'])}",
     "nb_rule_bmi25": f"{D.STRATEGY_LABELS['RULE_BMI25']} (95% CI)",
-    "nb_all": "Test everyone", "nb_none": "Test no one",
+    "nb_all": "Alert everyone", "nb_none": "Alert no one",
 }
 # legend entries in the order of its three columns (a legend is filled column by column)
 DCA_LEGEND = ("nb_ens", "nb_lr_all", "nb_lr_asb", "nb_ens_youden", "nb_ens_sens80", "nb_ens_sens90", "nb_rule_bmi25",
               "nb_all", "nb_none")
 # the strategies in a sentence (notes)
 DCA_NAMES = {
-    "nb_ens": "the ensemble", "nb_lr_all": "the 12-input logistic regression",
-    "nb_lr_asb": "the logistic regression on age, sex and BMI",
+    "nb_ens": "the ensemble", "nb_lr_all": "logistic regression with all 12 inputs",
+    "nb_lr_asb": "logistic regression with age, sex and BMI",
     "nb_ens_youden": f"the ensemble at the {D.THRESHOLD_LABELS['YOUDEN']}",
     "nb_ens_sens80": f"the ensemble at the {lower_first(D.THRESHOLD_LABELS['SENS80'])}",
     "nb_ens_sens90": f"the ensemble at the {lower_first(D.THRESHOLD_LABELS['SENS90'])}",
     "nb_rule_bmi25": f"the {D.RULE_LABELS['BMI25']} rule",
-    "nb_all": "testing everyone", "nb_none": "testing no one",
+    "nb_all": "alerting everyone", "nb_none": "alerting no one",
 }
 # the alerts that flag the same people at every threshold probability
 FIXED_ALERTS = ("nb_rule_bmi25", "nb_ens_youden", "nb_ens_sens80", "nb_ens_sens90")
@@ -1689,7 +1695,7 @@ def figure_decision_curves(store):
                     F.panel_title(ax, panel, f"{D.DATASET_LABELS[ds]}: {OUT_WORD[o]}")
                 else:
                     first = D.panel_label(n_out * (n_kind * i) + j)
-                    F.panel_title(ax, panel, f"As {first}: ensemble, age-sex-BMI model and rule")
+                    F.panel_title(ax, panel, f"As {first}: ensemble, logistic regression (age, sex and BMI) and rule")
     handles, labels = [], []
     for col in DCA_LEGEND:
         if col not in drawn:
@@ -1707,7 +1713,7 @@ def figure_decision_curves(store):
     span = {ds: f"{D.legend_panel(per * i)}-{D.legend_panel(per * i + per - 1)}" for i, ds in enumerate(DCA_DATASETS)}
     kind = [join_and([D.legend_panel(n_out * r + j) for r in range(nrows) if r % n_kind == k for j in range(n_out)])
             for k in range(n_kind)]
-    cal = "Figures " + join_and([D.panel_ref(t, order_of(f, t), p).split(" ", 1)[1] for f, t, p in (
+    cal = "Figs. " + join_and([D.panel_ref(t, order_of(f, t), p).split(" ", 1)[1] for f, t, p in (
         ("roc_calibration_alt", "main", "c"), ("roc_calibration_alt", "main", "d"),
         ("roc_calibration_ast", "main", "c"), ("roc_calibration_ast", "main", "d"))])
     sides = ("left", "right")       # the columns, one per outcome in display.OUTCOMES order
@@ -1720,9 +1726,9 @@ def figure_decision_curves(store):
     legend = (
         f"Net benefit against threshold probability in {D.DATASET_LONG['KN']} ({people_text(sizes['KN'])}), "
         f"{span['KN']}, and the development test set ({people_text(sizes['DEV_TEST'])}), {span['DEV_TEST']}, for "
-        f"{columns}; {events_pointer(D.OUTCOMES)}. Panels {kind[0]}: the ensemble, the 12-input logistic "
-        f"regression and three fixed ensemble alerts; panels {kind[1]}: the ensemble, the logistic regression on "
-        f"age, sex and BMI and the {D.RULE_LABELS['BMI25']} rule. On a model's curve, a person is flagged when the "
+        f"{columns}; {events_pointer(D.OUTCOMES)}. Panels {kind[0]}: {DCA_NAMES['nb_ens']}, "
+        f"{DCA_NAMES['nb_lr_all']} and three fixed ensemble alerts; panels {kind[1]}: {DCA_NAMES['nb_ens']}, "
+        f"{DCA_NAMES['nb_lr_asb']} and {DCA_NAMES['nb_rule_bmi25']}. On a model's curve, a person is flagged when the "
         "predicted probability, used as it stands (without recalibration in KNHANES), is at or above the threshold "
         f"probability pt; net benefit = true positives/n - false positives/n {TIMES} pt/(1 - pt), with n the people of "
         "the panel. The fixed alerts (ensemble thresholds set in the development test set for the Youden index and for "
@@ -1783,10 +1789,10 @@ def figure_prediction_distributions(store):
     legend = (
         f"Number of people in each {D.fmt(width * 100, 0)}% band of predicted risk of the ensemble (log scale; bar "
         f"heights rounded to 2 significant figures) for {D.OUTCOME_LABELS['ALT']}, {D.legend_panel(0)}, and "
-        f"{D.OUTCOME_LABELS['AST']}, {D.legend_panel(1)}. Within each band the left bar shows the development test "
-        f"set ({people_text(sizes['DEV_TEST'])}) and the right bar {long_kn} ({people_text(sizes['KN'])}). In KNHANES, "
-        "the ensemble's predicted risks are used as they stand, without recalibration.")
-    notes = [MASKED_NOTE["si"]] if masked_any else []
+        f"{D.OUTCOME_LABELS['AST']}, {D.legend_panel(1)}. {D.DATASET_LABELS['DEV_TEST']} "
+        f"({people_text(sizes['DEV_TEST'])}); {long_kn} ({people_text(sizes['KN'])}). In KNHANES, the ensemble's "
+        "predicted risks are used as they stand, without recalibration.")
+    notes = [f"{MASKED_TEXT.capitalize()}."] if masked_any else []
     notes.append(D.abbreviation_note("ALT", "AST", "KNHANES"))
     return publish(fig, "prediction_distributions", "si", order_of("prediction_distributions", "si"), title, legend,
                    notes, ["prediction_histogram.csv", "performance.csv"])
@@ -1800,9 +1806,10 @@ SHAP_PANELS = (("ua_glucose", "ua_protein", "ua_ketone", "ua_bilirubin", "ua_blo
 # nitrite, pH and specific gravity are dipstick fields too: panel a holds the graded ones
 SHAP_PANEL_TITLES = ("Graded dipstick fields", "Other dipstick fields, age, sex and BMI")
 assert sorted(sum(SHAP_PANELS, ())) == sorted(D.INPUTS), "SHAP_PANELS must hold every input once"
-# each outcome's symbol; within a level, the outcomes are drawn top down in display.OUTCOMES order (SHAP_OFFSETS)
-SHAP_STYLE = {"ALT": dict(marker="o", color=F.OKABE_ITO["blue"], shape="circles"),
-              "AST": dict(marker="^", color=F.OKABE_ITO["vermillion"], shape="triangles")}
+# each outcome's symbol (the key of the figure names it); within a level, the outcomes are drawn top down in
+# display.OUTCOMES order (SHAP_OFFSETS)
+SHAP_STYLE = {"ALT": dict(marker="o", color=F.OKABE_ITO["blue"]),
+              "AST": dict(marker="^", color=F.OKABE_ITO["vermillion"])}
 SHAP_OFFSETS = (0.17, -0.17)
 INPUT_HEAD = {**D.INPUT_LABELS, "age": "Age, years", "male": "Sex", "bmi": f"BMI, {D.BMI_UNIT}"}
 
@@ -1852,7 +1859,7 @@ def figure_shap_summary(store):
         f"{per_panel}, in "
         f"a random sample of people of the development test set (people sampled: {n_rec}). Bars show the mean "
         f"over the {n_learn} base learners of the ensemble (each of the three learners fitted in each calibration "
-        "fold); symbols show the mean over the folds of each learner. SHAP values describe the base learners "
+        "fold), with the mean over the folds of each learner. SHAP values describe the base learners "
         f"before the isotonic calibration step. Inputs are ordered by their mean absolute SHAP value. The input "
         f"'{D.INPUT_LABELS['male']}' is sex, 1 for men and 0 for women.")
     notes = [D.abbreviation_note("ALT", "AST", "BMI", "SHAP")]
@@ -1918,11 +1925,11 @@ def figure_shap_levels(store):
     labels = [OUTCOME_TEXT[(o, "DEV")] for o in D.OUTCOMES]
     fig.legend(handles, labels, loc="outside lower center", ncol=2, frameon=False)
     title = "Mean SHAP value at each level of each input in the development test set"
-    symbols = join_and([f"{lower_first(OUTCOME_TEXT[(o, 'DEV')])} ({SHAP_STYLE[o]['shape']})" for o in D.OUTCOMES])
+    outcomes = join_and([lower_first(OUTCOME_TEXT[(o, "DEV")]) for o in D.OUTCOMES])
     panels = join_and([f"{D.legend_panel(j)} {lower_first(t)}" for j, t in enumerate(SHAP_PANEL_TITLES)])
     legend = (
         "Mean SHAP value (log-odds scale of the base learners) of the people at each level of each input, for "
-        f"{symbols}, in the samples of {D.label('figure', 'si', order_of('shap_summary', 'si'))}: {panels}. Values "
+        f"{outcomes}, in the samples of {figure_cite('shap_summary', 'si')}: {panels}. Values "
         "above 0 "
         "mark levels at which the input's mean contribution to the base learners' log odds (before the isotonic "
         "calibration step) was positive, and values below 0 levels at which it was negative; SHAP values show "
@@ -1930,7 +1937,7 @@ def figure_shap_levels(store):
         f"band ({GE}30 {D.BMI_UNIT}) joins the obesity classes II and III.")
     notes = []
     if omitted:
-        notes.append("Levels held by fewer than 10 sampled people are not shown.")
+        notes.append("Levels held by fewer than 10 sampled people are left out.")
     notes.append(D.abbreviation_note("ALT", "AST", "BMI", "SHAP"))
     return publish(fig, "shap_levels", "si", order_of("shap_levels", "si"), title, legend, notes,
                    ["shap_by_level.csv"])
