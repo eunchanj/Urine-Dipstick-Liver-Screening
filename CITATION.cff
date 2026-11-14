@@ -20,3 +20,6 @@ authors:
     orcid: "https://orcid.org/0000-0002-7139-2342"
 license: MIT
 repository-code: "https://github.com/eunchanj/Urine-Dipstick-Liver-Screening"
+version: "v1.0"
+doi: "10.5281/zenodo.24213318"
+date-released: 2026-11-14

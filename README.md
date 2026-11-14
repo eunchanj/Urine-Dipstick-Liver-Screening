@@ -232,4 +232,6 @@ Please cite the paper:
 Eun Chan Jang, Pado Song, Joung Eun Kim, Myung Hwa Han and Kiheon Lee. Urine dipstick results added little to age, sex and body mass index in models predicting elevated aminotransferases in adults. 2026.
 ```
 
+Release v1.0 of this code, the version cited in the paper, is archived on Zenodo: https://doi.org/10.5281/zenodo.24213318.
+
 `CITATION.cff` gives the citation details of this code; GitHub shows them under "Cite this repository".
